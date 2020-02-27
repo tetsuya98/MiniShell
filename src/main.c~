@@ -1,0 +1,72 @@
+#include <stdio.h>
+#include <stdlib.h>
+
+#include "processus.h"
+#include "parser.h"
+
+int main(int argc, char *argv[]){
+	char str[MAX_STR_SIZE];
+	char* tokens[MAX_TOKENS];
+	processus_t cmds[MAX_CMD];
+	int nb_cmd = 0;
+	
+	while(1)
+	{
+		for(int i=0;i<MAX_STR_SIZE;i++){
+			cmds[i].argv[0]=NULL;
+			cmds[i].stdin=0;
+			cmds[i].stdout=1;
+			cmds[i].stderr=2;
+			cmds[i].background=0;
+			cmds[i].next=NULL;
+			cmds[i].next_succes=NULL;
+			cmds[i].next_failure=NULL;
+		}
+		printf("$ ");
+		fgets(str, MAX_STR_SIZE,stdin);
+		trim(str);
+		printf("chaine: -%s-\n",str);
+		clean(str);
+		split_str(str,tokens,MAX_TOKENS);
+		
+		separator_t sep;
+		char** iterator = tokens; 
+		int next;
+		
+		while((next = split_command(iterator, &sep))!=-1)
+		{
+			switch(sep){
+				case AND:
+					printf("separateur : &&, prochaine commande :%d \n",next);
+					cmds[nb_cmd].next = NULL;
+					cmds[nb_cmd].next_success = &cmds[nb_cmd+1];
+					cmds[nb_cmd].next_failure = NULL;
+					break;
+				case OR:
+					
+					break;
+				case PIPE:
+					
+					break;
+			}
+			redirection_t redir_type;
+			int path_idx = redirection(iterator,&redir_type);
+			switch(redir_type){
+			case OUTPUT_append:
+				cmds[nb_cmd].stdout=open(iterator[path_idx], O_WRONLY | O_CREATE | O_APPEND, 0660);
+				break;
+			case OUTPUT:
+				break;		
+			}
+			int i=0;
+			for(char** arg=iterator; *arg!=NULL; ++arg)
+			{
+				cmds[nb_cmd].argv[i++] = arg;
+			}
+			search_path(cmds[nb_cmd]);
+	
+			iterator+=next;
+		}
+		exec_cmdline(cmds);
+	}
+}
